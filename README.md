@@ -1,86 +1,110 @@
 # EchoSort
 
-EchoSort is a no-auth feedback intelligence system built with Next.js App Router, Prisma + MongoDB Atlas, and LangChain + Gemini.
+EchoSort is a full-stack User Feedback Intelligence System built for fast triage and internal ticket handling.
 
-It provides:
-- `/submit` for user feedback submission
-- `/dashboard` for AI-enriched feedback triage
-- `/dashboard/settings` for team email routing configuration
+The product is intentionally **no-auth** for demo speed, and uses **workspace isolation** (cookie + DB scoping) so each visitor sees an independent dataset.
 
-## Stack
-- Next.js `16.1.6` (App Router, TypeScript strict)
+## What It Does
+
+- Collects feedback from `/submit`.
+- Enriches each ticket with AI classification (sentiment, priority, category, assigned team).
+- Stores enriched tickets in MongoDB via Prisma.
+- Surfaces tickets in `/dashboard` with search, filters, trends, and status workflows.
+- Supports internal operations on each ticket (details page, assignee, status transitions, comments, activity log).
+- Sends routed team notifications by email (SMTP).
+- Supports AI-assisted reminder drafting before send.
+
+## Product Surfaces
+
+- `/submit`: end-user feedback intake.
+- `/dashboard`: list, filters, KPIs, trend chart, stale-ticket reminder workflow.
+- `/dashboard/tickets/[id]`: full ticket operations and history.
+- `/dashboard/settings`: team email routing, theme settings, and workspace reset.
+
+## Core Technical Stack
+
+- Next.js 16 (App Router, TypeScript strict)
 - Tailwind CSS v4 + shadcn/ui + Framer Motion + Lucide
 - Prisma ORM + MongoDB Atlas
 - LangChain.js + `@langchain/google-genai` (`gemini-3-flash-preview`)
-- SMTP email notifications via Nodemailer (Gmail app password)
-- TanStack Table + Nivo line chart
-- Vitest test suite
+- Nodemailer (SMTP)
+- TanStack Table + Nivo Line Chart
+- Vitest + Testing Library
 
-## Core Features
-- AI structured extraction with Zod schema:
-  - `sentiment` (`positive | neutral | negative`)
-  - `priority` (`Low | Medium | High | Urgent | Critical`)
-  - `category` (`Bug | Feature | UI | Billing | Other`)
-  - `assignedTeam` (`Engineering | Product | Finance | Operations`)
-- High-performance server action pipeline:
-  1. Validate input with Zod
-  2. Analyze with Gemini using `withStructuredOutput`
-  3. Save enriched data to MongoDB
-  4. Send team email if settings + SMTP are configured
-- Fallback behavior:
-  - If AI fails, ticket is still saved with safe fallback metadata
-  - If notification settings/SMTP are missing, ticket is still saved
-- UX polish:
-  - Glassmorphic dashboard and bento KPI layout
-  - Command-style modal with staged AI thinking states
-  - Dashboard `Ctrl/Cmd+K` shortcut
-  - Optimistic updates (`useOptimistic`)
-  - Skeleton loaders and route error boundaries
-  - Dark mode default with toggle
-- Professional ticket operations:
-  - Status lifecycle (`New`, `InProgress`, `Pending`, `Resolved`, `Closed`)
-  - Row click opens full ticket detail page
-  - Assignment, comments, and activity timeline
-  - Agentic reminder actions with AI-drafted reminder copy + SMTP send
+## AI Intelligence Layer
 
-## Project Structure
-```text
-src/
-  app/
-    submit/
-    dashboard/
-      settings/
-    actions/
-  components/
-    dashboard/
-    feedback/
-    settings/
-    submit/
-    theme/
-    ui/
-  lib/
-    ai/
-    dashboard/
-    email/
-    feedback/
-    schemas/
-    settings/
-prisma/
-tests/
-```
+Feedback analysis uses LangChain structured output with Zod schema.
 
-## 1) Prerequisites
-- Node.js `>=22`
-- npm `>=10`
-- MongoDB Atlas account
-- Google AI Studio API key
-- Gmail account with 2-Step Verification and App Password
+Extracted fields:
 
-## 2) Environment Variables (exactly where to paste)
-Create a file:
-- `H:\Uni work\Projects\EchoSort\.env`
+- `sentiment`: `positive | neutral | negative`
+- `priority`: `Low | Medium | High | Urgent | Critical`
+- `category`: `Bug | Feature | UI | Billing | Other`
+- `assignedTeam`: `Engineering | Product | Finance | Operations`
 
-Copy from `.env.example` and fill values:
+Implementation references:
+
+- `src/lib/ai/feedback-analyzer.ts`
+- `src/lib/schemas/feedback.ts`
+
+Behavior guarantees:
+
+- Invalid input is rejected by Zod before persistence.
+- AI failure does **not** block persistence.
+- On AI failure, safe fallback metadata is stored with `analysisStatus=FAILED`.
+
+## Ticket Lifecycle and Operations
+
+Ticket states:
+
+- `New`, `InProgress`, `Pending`, `Resolved`, `Closed`
+
+Operational capabilities:
+
+- Update status with reason/summary where needed.
+- Assign owner (`assigneeName`).
+- Add internal comments.
+- Track activities and reminder history.
+- Draft reminder email with AI, then edit and send manually.
+
+Key files:
+
+- `src/lib/tickets/ticket-service.ts`
+- `src/components/tickets/ticket-details-client.tsx`
+- `src/components/tickets/reminder-compose-drawer.tsx`
+
+## Workspace Isolation (No Auth)
+
+EchoSort uses anonymous workspace IDs to isolate data without login:
+
+- A `es_workspace` HTTP-only cookie is set automatically.
+- `Feedback` and `NotificationSettings` are scoped by `workspaceId`.
+- Dashboard queries and ticket actions always resolve current workspace first.
+- A "Start New Workspace" action rotates the cookie for a fresh empty view.
+
+Key files:
+
+- `src/proxy.ts`
+- `src/lib/workspace/workspace.ts`
+- `src/components/settings/workspace-controls-card.tsx`
+
+## Data Model (Prisma + MongoDB)
+
+Primary models:
+
+- `Feedback`
+- `NotificationSettings`
+- `FeedbackComment`
+- `FeedbackActivity`
+- `FeedbackReminder`
+
+Schema reference:
+
+- `prisma/schema.prisma`
+
+## Environment Variables
+
+Create `.env` in project root and keep it private.
 
 ```env
 DATABASE_URL="mongodb+srv://<dbUser>:<urlEncodedPassword>@<cluster-host>/echosort?retryWrites=true&w=majority&appName=<clusterName>"
@@ -96,103 +120,102 @@ SMTP_PASS="<your_google_app_password>"
 SMTP_FROM="EchoSort <your_gmail_address>"
 ```
 
-`/.env` is gitignored. Do not commit real keys.
+Notes:
 
-## 3) How To Get Each Secret
+- `SMTP_FROM` is optional; fallback is `EchoSort <SMTP_USER>`.
+- Reporter email is used as `replyTo` for team notifications.
+- Never commit `.env`.
 
-### MongoDB Atlas `DATABASE_URL`
-1. Go to MongoDB Atlas.
-2. Create a free cluster.
-3. Open **Database Access** and create a DB user.
-4. Open **Network Access** and allow your IP (or `0.0.0.0/0` for dev only).
-5. Click **Connect** -> **Drivers**.
-6. Copy the connection string.
-7. Replace:
-   - `<dbUser>` with your DB username
-   - `<password>` with URL-encoded password
-   - database name with `echosort`
-8. Paste into `.env` as `DATABASE_URL`.
-
-### Google Gemini `GOOGLE_API_KEY`
-1. Go to Google AI Studio.
-2. Generate a new API key.
-3. Paste into `.env` as `GOOGLE_API_KEY`.
-4. Keep `GEMINI_MODEL="gemini-3-flash-preview"`.
-
-### Gmail SMTP (`SMTP_USER`, `SMTP_PASS`)
-1. Enable Google 2-Step Verification.
-2. Generate an **App Password** in Google account security settings.
-3. Set:
-   - `SMTP_USER` = your Gmail address
-   - `SMTP_PASS` = app password
-   - `SMTP_FROM` = `EchoSort <your_gmail_address>`
-
-## 4) Local Setup
-Run in project root:
+## Local Development
 
 ```bash
-npm.cmd install
-npx.cmd prisma generate
-npx.cmd prisma db push
-npm.cmd run dev
+npm install
+npx prisma generate
+npx prisma db push
+npm run dev
 ```
 
-Then open:
+Open:
+
 - `http://localhost:3000/submit`
 - `http://localhost:3000/dashboard`
 - `http://localhost:3000/dashboard/settings`
 
-## 5) Manual Seed (optional)
-Seed script is manual by design.
+## Quality Checks
 
 ```bash
-npm.cmd run seed
+npm run lint
+npx tsc --noEmit
+npm run test
+npm run build
 ```
 
-This wipes existing feedback and inserts sample records.
+## Deployment (Vercel)
 
-## 6) Tests and Quality Checks
+1. Push repository to GitHub.
+2. Import the project in Vercel.
+3. Add all environment variables from local `.env` into Vercel project settings.
+4. Ensure production branch is `main`.
+5. Deploy.
+
+MongoDB/Prisma note:
+
+- Prisma + MongoDB uses `db push` (not SQL migrations).
+- Run schema push against the production DB when schema changes:
+
 ```bash
-npm.cmd run lint
-npx.cmd tsc --noEmit
-npx.cmd vitest run
-npm.cmd run build
+npx prisma db push
 ```
 
-## 7) Deployment on Vercel (Free Tier)
-1. Push project to GitHub (without `.env`).
-2. Import repo into Vercel.
-3. In **Project Settings -> Environment Variables**, add all keys from `.env`.
-4. Deploy.
-5. Validate:
-   - submit flow creates feedback
-   - dashboard shows AI enrichment
-   - settings save works
-   - SMTP emails send when fully configured
+## Scripts
 
-## 8) Operational Notes
-- Dashboard and settings routes are dynamic server-rendered pages.
-- If team recipient settings are incomplete, app shows a warning but still accepts feedback.
-- If Gemini fails, feedback is saved with fallback metadata and `analysisStatus=FAILED`.
-- If SMTP fails, feedback is saved and `notificationStatus=FAILED`.
-- Existing old data can be normalized with `npm run repair:data` after schema upgrades.
-
-## 9) Scripts
-- `npm run dev` - start dev server
+- `npm run dev` - start local dev server
 - `npm run build` - production build
 - `npm run start` - run production server
-- `npm run lint` - eslint
-- `npm run test` - vitest with coverage
-- `npm run test:watch` - vitest watch
-- `npm run seed` - run Prisma seed script
-- `npm run repair:data` - repair legacy enum/data values in MongoDB
+- `npm run lint` - lint checks
+- `npm run test` - test suite with coverage
+- `npm run test:watch` - watch mode tests
+- `npm run seed` - seed sample data
+- `npm run repair:data` - normalize legacy data
 - `npm run prisma:generate` - generate Prisma client
 - `npm run prisma:push` - push schema to MongoDB
 
-## 10) Assignment Requirement Mapping
-- Backend feedback creation: implemented via Next.js server actions.
-- MongoDB persistence: implemented with Prisma + Atlas-ready schema.
-- SPA feedback list + modal creation: implemented in dashboard + shared modal.
-- Search by name/category/priority: implemented with fuzzy query + multi-select filters.
-- LangChain extraction: implemented with structured Zod output + Gemini.
-- Optional team email: implemented via SMTP and settings-managed routing.
+## Project Structure
+
+```text
+src/
+  app/
+    submit/
+    dashboard/
+      settings/
+      tickets/[id]/
+    actions/
+  components/
+    dashboard/
+    tickets/
+    settings/
+    submit/
+    theme/
+    ui/
+  lib/
+    ai/
+    dashboard/
+    email/
+    feedback/
+    schemas/
+    settings/
+    tickets/
+    workspace/
+prisma/
+tests/
+scripts/
+```
+
+## Assignment Coverage
+
+- Backend feedback creation and persistence: implemented.
+- SPA feedback list and creation flow: implemented.
+- Search/filter by name/category/priority (plus ticket id): implemented.
+- LLM extraction via LangChain with structured output: implemented.
+- Optional team email routing: implemented.
+- Enhanced ticket handling and reminder workflows: implemented.

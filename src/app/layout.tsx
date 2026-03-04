@@ -22,6 +22,13 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: APP_NAME,
   description: APP_DESCRIPTION,
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    shortcut: ["/favicon.ico"],
+  },
 };
 
 export default function RootLayout({
