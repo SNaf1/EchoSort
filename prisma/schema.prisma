@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Sentiment {
+  positive
+  neutral
+  negative
+}
+
+enum FeedbackCategory {
+  Bug
+  Feature
+  UI
+  Billing
+  Other
+}
+
+enum Priority {
+  Low
+  Medium
+  High
+  Urgent
+  Critical
+}
+
+enum Team {
+  Engineering
+  Product
+  Finance
+  Operations
+}
+
+enum AnalysisStatus {
+  SUCCESS
+  FAILED
+}
+
+enum NotificationStatus {
+  SENT
+  SKIPPED
+  FAILED
+}
+
+enum TicketStatus {
+  New
+  InProgress
+  Pending
+  Resolved
+  Closed
+}
+
+enum ActivityType {
+  TicketCreated
+  StatusChanged
+  Assigned
+  CommentAdded
+  ReminderDrafted
+  ReminderSent
+  ReminderFailed
+}
+
+enum ReminderStatus {
+  DRAFTED
+  SENT
+  FAILED
+}
+
+model Feedback {
+  id                 String             @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId        String
+  name               String
+  email              String
+  message            String
+  allowFollowup      Boolean            @default(true)
+  sentiment          Sentiment
+  priority           Priority
+  category           FeedbackCategory
+  assignedTeam       Team
+  analysisStatus     AnalysisStatus     @default(SUCCESS)
+  analysisError      String?
+  notificationStatus NotificationStatus @default(SKIPPED)
+  notificationError  String?
+  notifiedAt         DateTime?
+  status             TicketStatus       @default(New)
+  assigneeName       String?
+  pendingReason      String?
+  resolutionSummary  String?
+  resolvedAt         DateTime?
+  closedAt           DateTime?
+  lastActivityAt     DateTime           @default(now())
+  lastReminderAt     DateTime?
+  reminderCount      Int                @default(0)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  comments           FeedbackComment[]
+  activities         FeedbackActivity[]
+  reminders          FeedbackReminder[]
+
+  @@index([workspaceId])
+  @@index([createdAt(sort: Desc)])
+  @@index([status])
+  @@index([category])
+  @@index([priority])
+  @@index([assignedTeam])
+  @@index([sentiment])
+  @@index([lastActivityAt(sort: Desc)])
+}
+
+model NotificationSettings {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String   @unique
+  engineeringEmail String?
+  productEmail     String?
+  operationsEmail  String?
+  financeEmail     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model FeedbackComment {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  feedbackId String   @db.ObjectId
+  authorName String
+  body       String
+  createdAt  DateTime @default(now())
+  feedback   Feedback @relation(fields: [feedbackId], references: [id])
+
+  @@index([feedbackId, createdAt(sort: Desc)])
+}
+
+model FeedbackActivity {
+  id         String       @id @default(auto()) @map("_id") @db.ObjectId
+  feedbackId String       @db.ObjectId
+  eventType  ActivityType
+  actor      String
+  metadata   Json?
+  createdAt  DateTime     @default(now())
+  feedback   Feedback      @relation(fields: [feedbackId], references: [id])
+
+  @@index([feedbackId, createdAt(sort: Desc)])
+  @@index([eventType])
+}
+
+model FeedbackReminder {
+  id           String         @id @default(auto()) @map("_id") @db.ObjectId
+  feedbackId   String         @db.ObjectId
+  draftSubject String
+  draftBody    String
+  recipient    String
+  status       ReminderStatus
+  error        String?
+  sentAt       DateTime?
+  createdAt    DateTime       @default(now())
+  feedback     Feedback        @relation(fields: [feedbackId], references: [id])
+
+  @@index([feedbackId, createdAt(sort: Desc)])
+  @@index([status])
+}
