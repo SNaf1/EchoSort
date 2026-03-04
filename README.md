@@ -210,12 +210,3 @@ prisma/
 tests/
 scripts/
 ```
-
-## Assignment Coverage
-
-- Backend feedback creation and persistence: implemented.
-- SPA feedback list and creation flow: implemented.
-- Search/filter by name/category/priority (plus ticket id): implemented.
-- LLM extraction via LangChain with structured output: implemented.
-- Optional team email routing: implemented.
-- Enhanced ticket handling and reminder workflows: implemented.
