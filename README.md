@@ -67,12 +67,6 @@ Operational capabilities:
 - Track activities and reminder history.
 - Draft reminder email with AI, then edit and send manually.
 
-Key files:
-
-- `src/lib/tickets/ticket-service.ts`
-- `src/components/tickets/ticket-details-client.tsx`
-- `src/components/tickets/reminder-compose-drawer.tsx`
-
 ## Workspace Isolation (No Auth)
 
 EchoSort uses anonymous workspace IDs to isolate data without login:
@@ -81,12 +75,6 @@ EchoSort uses anonymous workspace IDs to isolate data without login:
 - `Feedback` and `NotificationSettings` are scoped by `workspaceId`.
 - Dashboard queries and ticket actions always resolve current workspace first.
 - A "Start New Workspace" action rotates the cookie for a fresh empty view.
-
-Key files:
-
-- `src/proxy.ts`
-- `src/lib/workspace/workspace.ts`
-- `src/components/settings/workspace-controls-card.tsx`
 
 ## Submission Rate Limiting
 
@@ -165,45 +153,6 @@ Open:
 - `http://localhost:3000/dashboard`
 - `http://localhost:3000/dashboard/settings`
 
-## Quality Checks
-
-```bash
-npm run lint
-npx tsc --noEmit
-npm run test
-npm run build
-```
-
-## Deployment (Vercel)
-
-1. Push repository to GitHub.
-2. Import the project in Vercel.
-3. Add all environment variables from local `.env` into Vercel project settings.
-4. Ensure production branch is `main`.
-5. Deploy.
-
-MongoDB/Prisma note:
-
-- Prisma + MongoDB uses `db push` (not SQL migrations).
-- Run schema push against the production DB when schema changes:
-
-```bash
-npx prisma db push
-```
-
-## Scripts
-
-- `npm run dev` - start local dev server
-- `npm run build` - production build
-- `npm run start` - run production server
-- `npm run lint` - lint checks
-- `npm run test` - test suite with coverage
-- `npm run test:watch` - watch mode tests
-- `npm run seed` - seed sample data
-- `npm run repair:data` - normalize legacy data
-- `npm run prisma:generate` - generate Prisma client
-- `npm run prisma:push` - push schema to MongoDB
-
 ## Project Structure
 
 ```text
@@ -235,12 +184,3 @@ prisma/
 tests/
 scripts/
 ```
-
-## Assignment Coverage
-
-- Backend feedback creation and persistence: implemented.
-- SPA feedback list and creation flow: implemented.
-- Search/filter by name/category/priority (plus ticket id): implemented.
-- LLM extraction via LangChain with structured output: implemented.
-- Optional team email routing: implemented.
-- Enhanced ticket handling and reminder workflows: implemented.
