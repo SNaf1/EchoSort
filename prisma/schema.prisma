@@ -162,3 +162,18 @@ model FeedbackReminder {
   @@index([feedbackId, createdAt(sort: Desc)])
   @@index([status])
 }
+
+model RateLimitBucket {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  key          String   @unique
+  identityHash String
+  windowSec    Int
+  windowStart  DateTime
+  count        Int      @default(0)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([identityHash, windowSec, windowStart])
+  @@index([expiresAt])
+}

@@ -88,6 +88,26 @@ Key files:
 - `src/lib/workspace/workspace.ts`
 - `src/components/settings/workspace-controls-card.tsx`
 
+## Submission Rate Limiting
+
+Feedback submission is protected with server-side rate limiting to prevent Gemini API abuse:
+
+- Enforced before AI/email pipeline in `createFeedbackAction`.
+- Identity key is derived from **client IP only**.
+- Counters are shared in MongoDB (`RateLimitBucket`) for Vercel serverless consistency.
+- Default policy:
+  - 6 submissions per minute
+  - 40 submissions per hour
+- On limit hit, action returns app-level `RATE_LIMITED` + `retryAfterSeconds`.
+- If limiter storage fails, policy is **fail-open** (request allowed, warning logged).
+
+Key files:
+
+- `src/lib/rate-limit/client-ip.ts`
+- `src/lib/rate-limit/identity.ts`
+- `src/lib/rate-limit/submission-limiter.ts`
+- `src/app/actions/feedback-actions.ts`
+
 ## Data Model (Prisma + MongoDB)
 
 Primary models:
@@ -111,6 +131,9 @@ DATABASE_URL="mongodb+srv://<dbUser>:<urlEncodedPassword>@<cluster-host>/echosor
 
 GOOGLE_API_KEY="<your_google_ai_studio_key>"
 GEMINI_MODEL="gemini-3-flash-preview"
+RATE_LIMIT_SUBMIT_PER_MINUTE="6"
+RATE_LIMIT_SUBMIT_PER_HOUR="40"
+RATE_LIMIT_KEY_SALT="<long_random_secret>"
 
 SMTP_HOST="smtp.gmail.com"
 SMTP_PORT="465"
@@ -124,6 +147,7 @@ Notes:
 
 - `SMTP_FROM` is optional; fallback is `EchoSort <SMTP_USER>`.
 - Reporter email is used as `replyTo` for team notifications.
+- `RATE_LIMIT_KEY_SALT` should be set in production for stronger IP hash privacy.
 - Never commit `.env`.
 
 ## Local Development
@@ -202,6 +226,7 @@ src/
     dashboard/
     email/
     feedback/
+    rate-limit/
     schemas/
     settings/
     tickets/

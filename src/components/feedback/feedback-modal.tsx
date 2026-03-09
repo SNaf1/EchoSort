@@ -116,8 +116,15 @@ export function FeedbackModal({
 
     if (!result.ok) {
       onFailed?.(optimistic.id);
+      if ("code" in result && result.code === "RATE_LIMITED") {
+        toast.error(`Rate limit reached. Try again in ${result.retryAfterSeconds}s.`);
+        setIsSubmitting(false);
+        setStageIndex(0);
+        return;
+      }
+
       toast.error(result.error);
-      if (result.fieldErrors) {
+      if ("fieldErrors" in result && result.fieldErrors) {
         Object.entries(result.fieldErrors).forEach(([field, messages]) => {
           if (messages?.[0]) {
             form.setError(field as keyof FeedbackInput, { message: messages[0] });
